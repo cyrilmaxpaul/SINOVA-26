@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/favicon-96x96.png?v=3"
+      sizes="96x96"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3" />
+    <link rel="shortcut icon" href="/favicon.ico?v=3" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/apple-touch-icon.png?v=5"
+    />
+    <meta name="apple-mobile-web-app-title" content="SINOVA" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#0b0b12" />
+    <title>SINOVA'26 — Event Intelligence</title>
+    <!-- No-flash background: apply the last-known custom background/accent before first
+         paint, so the default gradient never flashes while Firestore loads the real one. -->
+    <script>
+      (function () {
+        try {
+          var r = document.documentElement;
+          var bg = localStorage.getItem("sinova-appbg");
+          var accent = localStorage.getItem("sinova-accent");
+          // Apply the last-known background; if none cached yet, fall back to a plain
+          // (theme-colored) background rather than the blue gradient — no blue flash.
+          r.style.setProperty("--app-bg", bg || "none");
+          if (accent) {
+            r.style.setProperty("--primary", accent);
+            r.style.setProperty("--ring", accent);
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

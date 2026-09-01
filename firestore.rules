@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admins are stored keyed by lowercased email. Admin login uses email/password,
+    // so request.auth.token.email is populated for them.
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()));
+    }
+
+    // Employees:
+    // - anyone signed in can read (needed for teammates / leaderboards)
+    // - an employee can create their own doc (self-registration) if it doesn't exist
+    // - the owning employee can update their own doc; admins can update any (points/team)
+    match /employees/{employeeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && !exists(/databases/$(database)/documents/employees/$(employeeId));
+      allow update: if isSignedIn()
+        && (request.auth.uid == resource.data.authUid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Teams:
+    // - public (signed-in) read
+    // - admins fully manage teams
+    // - self-registration (anonymous employees) must increment `members`; allow a
+    //   constrained update that only changes members/points for any signed-in user.
+    match /teams/{teamId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isSignedIn()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['members', 'points']));
+    }
+
+    // Games: signed-in read, admin write.
+    match /games/{gameId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Game results: signed-in read, admin create. Immutable after creation.
+    match /gameResults/{resultId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Roster (pre-approved employees): signed-in read (registration validates against it), admin write.
+    match /roster/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // App settings (event name + logo): signed-in read, admin write.
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Admins directory: signed-in read (client verifies role). Write via console / seed script only.
+    match /admins/{email} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Attendance check-ins: any signed-in participant may create/refresh their own
+    // record (doc id = participant id). Admins may correct/remove.
+    match /attendance/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    // Attendance awards (10/5/1 per completed team): admin-authored only.
+    match /attendanceAwards/{teamId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Scream Machine session control doc: admin controls the round.
+    match /scream/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Live loudness readings: participants stream their own; admin clears between rounds.
+    match /screamLevels/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    // Locked-in team loudness results + awards: admin-authored only.
+    match /screamResults/{teamId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Trades: captains (anonymous) or admins may create; immutable to non-admins.
+    // The receiving team's point increment is covered by the /teams update rule above.
+    match /trades/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Trade guards enforce "one individual per source team per receiving team".
+    match /tradeGuards/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+  }
+}
